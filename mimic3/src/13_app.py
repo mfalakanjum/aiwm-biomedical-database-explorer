@@ -140,6 +140,22 @@ st.markdown(
 )
 
 
+
+# Overview dashboard theme (scoped to MIMIC-III UI)
+st.markdown("""
+<style>
+.m3-hero{background:linear-gradient(110deg,#133452,#0f666e);border-radius:17px;padding:28px 32px;margin:4px 0 23px;color:white}
+.m3-hero h1{color:white;font-size:2.05rem;letter-spacing:-.025em;margin:14px 0}
+.m3-hero p{color:#e0f4f6;font-size:.96rem;margin:0}
+.m3-eyebrow{color:#8de8e9;font-size:.7rem;font-weight:800;letter-spacing:.17em}
+.m3-section{font-size:1.18rem;font-weight:750;color:#163451;margin:24px 0 12px}
+.m3-kpi{background:white;border:1px solid #dce7ee;border-radius:13px;padding:18px 19px;min-height:104px;box-shadow:0 4px 15px rgba(18,51,78,.045);margin-bottom:12px}
+.m3-kpi-label{color:#607a8d;font-size:.82rem;font-weight:600;margin-bottom:10px}
+.m3-kpi-value{color:#163451;font-size:1.75rem;font-weight:800;line-height:1.2}
+.m3-panel-title{color:#163451;font-weight:700;font-size:1rem;margin:5px 0 12px}
+</style>
+""", unsafe_allow_html=True)
+
 # ============================================================
 # DuckDB helpers
 # ============================================================
@@ -419,316 +435,98 @@ with st.sidebar:
 # ============================================================
 
 if page == "Overview":
+    st.markdown("""<div class="m3-hero"><div class="m3-eyebrow">MIMIC-III · CRITICAL CARE RESEARCH</div><h1>Dataset Overview</h1><p>Explore ICU recordings, clinical data, physiological signal availability, and matched waveform metadata.</p></div>""", unsafe_allow_html=True)
 
-    st.header(
-        "Dataset Overview"
-    )
-
-    overview = query_df(
-        """
-        SELECT *
-        FROM explorer_overview
-        """
-    )
-
+    overview = query_df("SELECT * FROM explorer_overview")
     if overview.empty:
-
-        st.warning(
-            "Explorer overview is empty."
-        )
-
+        st.warning("Explorer overview is empty.")
     else:
-
         row = overview.iloc[0]
-
-        col1, col2, col3, col4 = (
-            st.columns(4)
-        )
-
-        col1.metric(
-            "Record sets",
-            format_integer(
-                row[
-                    "total_record_sets"
-                ]
-            ),
-        )
-
-        col2.metric(
-            "Waveform records",
-            format_integer(
-                row[
-                    "waveform_records"
-                ]
-            ),
-        )
-
-        col3.metric(
-            "Numeric records",
-            format_integer(
-                row[
-                    "numeric_records"
-                ]
-            ),
-        )
-
-        col4.metric(
-            "Waveform + numerics",
-            format_integer(
-                row[
-                    "waveform_and_numeric_records"
-                ]
-            ),
-        )
-
-        col1, col2, col3, col4 = (
-            st.columns(4)
-        )
-
-        col1.metric(
-            "Adult records",
-            format_integer(
-                row[
-                    "adult_records"
-                ]
-            ),
-        )
-
-        col2.metric(
-            "Neonate records",
-            format_integer(
-                row[
-                    "neonate_records"
-                ]
-            ),
-        )
-
-        col3.metric(
-            "Clinically linked full records",
-            format_integer(
-                row[
-                    "clinically_linked_full_records"
-                ]
-            ),
-        )
-
-        matched_subject_count = query_scalar(
-            """
-            SELECT COUNT(*)
-            FROM matched_subjects
-            """
-        )
-
-        col4.metric(
-            "Matched subjects",
-            format_integer(
-                matched_subject_count
-            ),
-        )
-
-    st.subheader(
-        "Waveform Availability"
-    )
-
-    waveform_stats = query_df(
-        """
-        SELECT
-            SUM(
-                CASE WHEN has_ecg
-                THEN 1 ELSE 0 END
-            ) AS ECG,
-
-            SUM(
-                CASE WHEN has_pleth
-                THEN 1 ELSE 0 END
-            ) AS PLETH,
-
-            SUM(
-                CASE WHEN has_arterial_waveform
-                THEN 1 ELSE 0 END
-            ) AS ARTERIAL,
-
-            SUM(
-                CASE WHEN has_resp_waveform
-                THEN 1 ELSE 0 END
-            ) AS RESP,
-
-            SUM(
-                CASE WHEN has_cvp
-                THEN 1 ELSE 0 END
-            ) AS CVP,
-
-            SUM(
-                CASE WHEN has_pap
-                THEN 1 ELSE 0 END
-            ) AS PAP,
-
-            SUM(
-                CASE WHEN has_co2
-                THEN 1 ELSE 0 END
-            ) AS CO2,
-
-            SUM(
-                CASE WHEN has_icp
-                THEN 1 ELSE 0 END
-            ) AS ICP
-
-        FROM explorer_records
-        WHERE has_waveform
-        """
-    )
-
-    if not waveform_stats.empty:
-
-        wf_plot = (
-            waveform_stats
-            .T
-            .reset_index()
-        )
-
-        wf_plot.columns = [
-            "Signal",
-            "Records",
+        st.markdown('<div class="m3-section">Recording inventory</div>', unsafe_allow_html=True)
+        metrics = [
+            ("Record sets", row.get("total_record_sets")),
+            ("Waveform records", row.get("waveform_records")),
+            ("Numeric records", row.get("numeric_records")),
+            ("Waveform + numerics", row.get("waveform_and_numeric_records")),
+            ("Adult records", row.get("adult_records")),
+            ("Neonate records", row.get("neonate_records")),
+            ("Clinically linked", row.get("clinically_linked_full_records")),
+            ("Matched subjects", query_scalar("SELECT COUNT(*) FROM matched_subjects")),
         ]
+        for start in (0, 4):
+            cols = st.columns(4, gap="medium")
+            for col, (label, value) in zip(cols, metrics[start:start+4]):
+                with col:
+                    st.markdown(f'<div class="m3-kpi"><div class="m3-kpi-label">{label}</div><div class="m3-kpi-value">{format_integer(value)}</div></div>', unsafe_allow_html=True)
 
-        st.bar_chart(
-            wf_plot,
-            x="Signal",
-            y="Records",
-            width="stretch",
-        )
-
-        st.dataframe(
-            wf_plot,
-            width="stretch",
-            hide_index=True,
-        )
-
-    st.subheader(
-        "Clinical Database"
-    )
-
-    c1, c2, c3, c4 = (
-        st.columns(4)
-    )
-
-    c1.metric(
-        "Patients",
-        format_integer(
-            query_scalar(
-                """
-                SELECT COUNT(*)
-                FROM patients
-                """
-            )
-        ),
-    )
-
-    c2.metric(
-        "Admissions",
-        format_integer(
-            query_scalar(
-                """
-                SELECT COUNT(*)
-                FROM admissions
-                """
-            )
-        ),
-    )
-
-    c3.metric(
-        "ICU stays",
-        format_integer(
-            query_scalar(
-                """
-                SELECT COUNT(*)
-                FROM icustays
-                """
-            )
-        ),
-    )
-
-    c4.metric(
-        "Diagnoses",
-        format_integer(
-            query_scalar(
-                """
-                SELECT COUNT(*)
-                FROM diagnoses_icd
-                """
-            )
-        ),
-    )
-
-    st.subheader(
-        "Matched Waveform Linkage"
-    )
-
-    linkage = query_df(
-        """
+    st.markdown('<div class="m3-section">Physiological signal availability</div>', unsafe_allow_html=True)
+    st.caption("Number of waveform records with each signal indicated in header/layout metadata; this does not establish sample-level continuity or quality.")
+    waveform_stats = query_df("""
         SELECT
-            COUNT(*) AS matched_manifest_records,
+            SUM(CASE WHEN has_ecg THEN 1 ELSE 0 END) AS ECG,
+            SUM(CASE WHEN has_pleth THEN 1 ELSE 0 END) AS PLETH,
+            SUM(CASE WHEN has_arterial_waveform THEN 1 ELSE 0 END) AS ARTERIAL,
+            SUM(CASE WHEN has_resp_waveform THEN 1 ELSE 0 END) AS RESP,
+            SUM(CASE WHEN has_cvp THEN 1 ELSE 0 END) AS CVP,
+            SUM(CASE WHEN has_pap THEN 1 ELSE 0 END) AS PAP,
+            SUM(CASE WHEN has_co2 THEN 1 ELSE 0 END) AS CO2,
+            SUM(CASE WHEN has_icp THEN 1 ELSE 0 END) AS ICP
+        FROM explorer_records WHERE has_waveform
+    """)
+    if not waveform_stats.empty:
+        wf_plot = waveform_stats.T.reset_index()
+        wf_plot.columns = ["Signal", "Records"]
+        wf_plot["Records"] = pd.to_numeric(wf_plot["Records"], errors="coerce").fillna(0)
+        left, right = st.columns([2.3, 1], gap="medium")
+        with left:
+            st.markdown('<div class="m3-panel-title">Signals across waveform records</div>', unsafe_allow_html=True)
+            st.bar_chart(wf_plot.set_index("Signal"), horizontal=True, color="#0b8f91", height=335)
+        with right:
+            st.markdown('<div class="m3-panel-title">Signal inventory</div>', unsafe_allow_html=True)
+            st.dataframe(wf_plot, hide_index=True, use_container_width=True, height=335)
 
-            SUM(
-                CASE
-                    WHEN full_waveform_link_available
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS linked_records,
+    st.markdown('<div class="m3-section">Clinical database</div>', unsafe_allow_html=True)
+    clinical = [
+        ("Patients", "SELECT COUNT(*) FROM patients"),
+        ("Admissions", "SELECT COUNT(*) FROM admissions"),
+        ("ICU stays", "SELECT COUNT(*) FROM icustays"),
+        ("Diagnoses", "SELECT COUNT(*) FROM diagnoses_icd"),
+    ]
+    cols = st.columns(4, gap="medium")
+    for col, (label, sql) in zip(cols, clinical):
+        with col:
+            st.markdown(f'<div class="m3-kpi"><div class="m3-kpi-label">{label}</div><div class="m3-kpi-value">{format_integer(query_scalar(sql))}</div></div>', unsafe_allow_html=True)
 
-            SUM(
-                CASE
-                    WHEN NOT full_waveform_link_available
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS unlinked_records
+    st.markdown('<div class="m3-section">Recording structure & waveform linkage</div>', unsafe_allow_html=True)
+    left, right = st.columns(2, gap="medium")
+    with left:
+        st.markdown('<div class="m3-panel-title">Structural recording characteristics</div>', unsafe_allow_html=True)
+        structure = query_df("""
+            SELECT COUNT(*) AS indexed_records,
+                   SUM(CASE WHEN has_structural_gap THEN 1 ELSE 0 END) AS records_with_gaps,
+                   SUM(record_span_hours) AS total_record_span_hours
+            FROM explorer_records
+        """).iloc[0]
+        st.metric("Indexed records", format_integer(structure["indexed_records"]))
+        st.metric("Records with structural gaps", format_integer(structure["records_with_gaps"]))
+        st.metric("Summed record span", f'{format_float(structure["total_record_span_hours"])} h')
+        st.caption("Record spans may include gaps and are not equivalent to continuous signal duration.")
+    with right:
+        st.markdown('<div class="m3-panel-title">Matched waveform linkage</div>', unsafe_allow_html=True)
+        linkage = query_df("""
+            SELECT COUNT(*) AS matched_manifest_records,
+                   SUM(CASE WHEN full_waveform_link_available THEN 1 ELSE 0 END) AS linked_records,
+                   SUM(CASE WHEN NOT full_waveform_link_available THEN 1 ELSE 0 END) AS unlinked_records
+            FROM matched_waveform_mapping
+        """)
+        if not linkage.empty:
+            r = linkage.iloc[0]
+            st.metric("Matched manifest entries", format_integer(r["matched_manifest_records"]))
+            st.metric("Full-record links available", format_integer(r["linked_records"]))
+            st.metric("Full-record links unavailable", format_integer(r["unlinked_records"]))
+        st.caption("Unlinked entries are retained; required matched master headers may be absent locally.")
 
-        FROM matched_waveform_mapping
-        """
-    )
-
-    if not linkage.empty:
-
-        r = linkage.iloc[0]
-
-        a, b, c = st.columns(3)
-
-        a.metric(
-            "Matched manifest entries",
-            format_integer(
-                r[
-                    "matched_manifest_records"
-                ]
-            ),
-        )
-
-        b.metric(
-            "Full-record links available",
-            format_integer(
-                r[
-                    "linked_records"
-                ]
-            ),
-        )
-
-        c.metric(
-            "Full-record links unavailable",
-            format_integer(
-                r[
-                    "unlinked_records"
-                ]
-            ),
-        )
-
-        st.info(
-            "Unlinked matched entries are preserved rather than "
-            "silently discarded. Their original full-waveform "
-            "record linkage is unavailable because the required "
-            "matched master header is not present locally."
-        )
-
+    st.info("Evidence scope: signal availability is header/layout-derived; recording spans and gaps are structural metadata. Exact signal-specific continuous duration and sample-level waveform SQI are not available in this explorer.")
 
 # ============================================================
 # RECORD EXPLORER

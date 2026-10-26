@@ -423,28 +423,85 @@ def render_header():
 
 
 def render_overview(master, tracks, dictionary, labs):
-    st.subheader("Dataset Overview")
-    a, b, c, d = st.columns(4)
-    a.metric("Cases", f"{len(master):,}")
-    b.metric("Subjects", f"{master['subjectid'].nunique():,}" if "subjectid" in master else "—")
-    c.metric("Exact tracks", f"{tracks['tname'].nunique():,}")
-    d.metric("Dictionary entries", f"{len(dictionary):,}")
+    """Dashboard-only redesign; all source metadata remains unchanged."""
+    st.markdown("""
+    <style>
+    .vital-hero {background:linear-gradient(110deg,#133452,#11646b);color:white;
+        padding:28px 30px;border-radius:16px;margin-bottom:22px;}
+    .vital-eyebrow {color:#9de8ee;font-size:11px;letter-spacing:2px;font-weight:750;}
+    .vital-hero h1 {color:white;font-size:32px;margin:18px 0 10px;}
+    .vital-hero p {color:#e1f1f5;margin:0;font-size:14px;}
+    .vital-kpi {background:white;border:1px solid #dce6ed;border-radius:12px;
+        padding:17px 18px;min-height:100px;box-shadow:0 4px 15px rgba(17,46,68,.04);}
+    .vital-kpi .label {font-size:12px;color:#5b7288;margin-bottom:9px;}
+    .vital-kpi .value {font-size:25px;font-weight:750;color:#103452;}
+    .vital-section {font-size:18px;font-weight:750;color:#143652;margin:26px 0 8px;}
+    .vital-note {color:#667b8e;font-size:12px;margin-bottom:16px;}
+    </style>
+    <div class="vital-hero"><div class="vital-eyebrow">VITALDB · PERIOPERATIVE RESEARCH</div>
+    <h1>Dataset Overview</h1><p>Explore surgical cases, physiological monitoring tracks,
+    laboratory measurements, and research-ready clinical metadata.</p></div>
+    """, unsafe_allow_html=True)
 
-    e, f, g, h = st.columns(4)
-    e.metric("Track rows", f"{len(tracks):,}")
-    f.metric("Lab measurements", f"{len(labs):,}")
-    g.metric("Cases with labs", f"{labs['caseid'].nunique():,}")
-    g2 = dictionary[canonical_col(dictionary)].nunique()
-    h.metric("Canonical concepts", f"{g2:,}")
+    def cards(items):
+        cols = st.columns(len(items), gap="medium")
+        for col, (label, value) in zip(cols, items):
+            with col:
+                st.markdown(
+                    '<div class="vital-kpi"><div class="label">'+label+'</div>'
+                    '<div class="value">'+f'{value:,}'+'</div></div>',
+                    unsafe_allow_html=True,
+                )
 
-    st.markdown(
-        """
-        **Explorer architecture:** metadata-first cohort discovery → case detail →
-        exact/canonical signal inventory → deliberate remote signal retrieval →
-        validity-aware visualization → controlled Stage-12 export.
-        """
-    )
+    st.markdown('<div class="vital-section">Database inventory</div>', unsafe_allow_html=True)
+    cards([
+        ("Surgical cases", len(master)),
+        ("Subjects", master["subjectid"].nunique() if "subjectid" in master else 0),
+        ("Exact track types", tracks["tname"].nunique()),
+        ("Canonical concepts", dictionary[canonical_col(dictionary)].nunique()),
+    ])
+    st.write("")
+    cards([
+        ("Track records", len(tracks)),
+        ("Lab measurements", len(labs)),
+        ("Cases with labs", labs["caseid"].nunique()),
+        ("Dictionary entries", len(dictionary)),
+    ])
 
+    st.markdown('<div class="vital-section">Physiological monitoring inventory</div>', unsafe_allow_html=True)
+    st.markdown('<div class="vital-note">Counts represent track metadata availability, not continuous usable signal samples.</div>', unsafe_allow_html=True)
+    track_counts = (tracks.groupby("tname", dropna=True)["caseid"].nunique()
+                    .sort_values(ascending=False).head(12))
+    chart_col, table_col = st.columns([1.65, 1], gap="large")
+    with chart_col:
+        st.markdown("**Most widely available exact tracks**")
+        chart = track_counts.sort_values().rename_axis("Track").reset_index(name="Cases")
+        st.bar_chart(chart, x="Track", y="Cases", horizontal=True, color="#0c9192", height=380)
+    with table_col:
+        st.markdown("**Track availability**")
+        table = track_counts.rename_axis("Exact track").reset_index(name="Cases")
+        table["Case coverage (%)"] = (100 * table["Cases"] / max(len(master), 1)).round(1)
+        st.dataframe(table, hide_index=True, use_container_width=True, height=380)
+
+    st.markdown('<div class="vital-section">Clinical case distribution</div>', unsafe_allow_html=True)
+    left, right = st.columns([1.4, 1], gap="large")
+    with left:
+        if "department" in master.columns:
+            departments = (master["department"].fillna("Not recorded").astype(str)
+                           .value_counts().head(10).sort_values())
+            st.markdown("**Cases by department**")
+            st.bar_chart(departments.rename_axis("Department").reset_index(name="Cases"),
+                         x="Department", y="Cases", horizontal=True, color="#0c9192", height=340)
+        else:
+            st.info("Department metadata is unavailable.")
+    with right:
+        st.markdown("**Data access and interpretation**")
+        st.info("Metadata browsing uses local files. Waveform samples are fetched remotely only when explicitly requested in Signal Viewer.")
+        st.caption("Exact track names and IDs are retained. Track presence does not establish signal continuity, sample quality, or clinical validity.")
+        st.caption("Clinical numeric validity checks remain in the original signal viewer.")
+
+    st.markdown('<div class="vital-section">Explorer workflow</div>', unsafe_allow_html=True)
+    st.caption("Cohort Explorer → Case Browser → Signal Viewer → Download / Export")
 
 def render_cohort(master, signal_avail):
     st.subheader("Cohort Explorer")
