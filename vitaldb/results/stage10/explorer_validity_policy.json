@@ -1,0 +1,65 @@
+{
+  "policy_version": "2026-09-15-v5-robust-stage07-loader",
+  "principles": [
+    "Raw VitalDB measurements are immutable and must remain available internally for provenance and technical review.",
+    "Physiologically impossible or semantically unresolved numeric values must not be presented as valid clinical measurements.",
+    "Invalid values are not silently corrected, clipped, rescaled, interpolated, or replaced.",
+    "The Explorer should distinguish source availability from clinical display validity.",
+    "A technically valid waveform may still be blocked from physiological amplitude interpretation.",
+    "Downstream analysis must use analysis_valid rather than mere source availability."
+  ],
+  "future_explorer_behavior": {
+    "display_valid_true": "Display the source measurement with appropriate metadata.",
+    "display_valid_false": "Do not show the impossible raw number as a valid clinical measurement. Display 'Unavailable / invalid source value' or an equivalent explicit status.",
+    "analysis_valid_true": "Measurement may enter downstream analysis subject to analysis-specific QC.",
+    "analysis_valid_false": "Block the measurement from automatic physiological calculations.",
+    "raw_value_policy": "Retain original source values internally and in provenance/audit views. Never silently modify them."
+  },
+  "numeric_sanity_rules": {
+    "HR": {
+      "hard_min": 10.0,
+      "hard_max": 300.0,
+      "unit": "beats/min",
+      "description": "Heart rate"
+    },
+    "SPO2": {
+      "hard_min": 0.0,
+      "hard_max": 100.0,
+      "unit": "%",
+      "description": "Peripheral oxygen saturation"
+    },
+    "ETCO2": {
+      "hard_min": 0.0,
+      "hard_max": 150.0,
+      "unit": "mmHg_or_source_unit",
+      "description": "End-tidal CO2"
+    },
+    "BIS": {
+      "hard_min": 0.0,
+      "hard_max": 100.0,
+      "unit": "index",
+      "description": "Bispectral index"
+    },
+    "ART_MAP": {
+      "hard_min": 1.0,
+      "hard_max": 250.0,
+      "unit": "mmHg_if_source_semantics_confirmed",
+      "description": "Invasive arterial mean pressure"
+    },
+    "ART_SBP": {
+      "hard_min": 1.0,
+      "hard_max": 350.0,
+      "unit": "mmHg_if_source_semantics_confirmed",
+      "description": "Invasive arterial systolic pressure"
+    },
+    "ART_DBP": {
+      "hard_min": 1.0,
+      "hard_max": 250.0,
+      "unit": "mmHg_if_source_semantics_confirmed",
+      "description": "Invasive arterial diastolic pressure"
+    }
+  },
+  "arterial_waveform_policy": {
+    "negative_baseline": "May be shown as a raw technical waveform with a warning, but must not be interpreted as calibrated arterial pressure until scale semantics are established."
+  }
+}
